@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cloud Tunnel — Phone + Drive, ek jagah</title>
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img src="icons/icon.svg" alt="" class="logo">
+    <div>
+      <h1>Cloud Tunnel</h1>
+      <p>Phone + Drive, ek jagah</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- GALLERY -->
+  <section id="page-gallery" class="page active">
+    <div class="card storage-card">
+      <div class="storage-row">
+        <div>
+          <span class="label">📱 Phone</span>
+          <strong id="phoneUsage">—</strong>
+        </div>
+        <div>
+          <span class="label">☁️ Drive</span>
+          <strong id="driveUsage">Not connected</strong>
+        </div>
+      </div>
+      <div class="bar"><div id="storageBar" class="bar-fill"></div></div>
+      <div class="btn-row">
+        <button class="btn" id="btnAddLocal">+ Phone files jodo</button>
+        <button class="btn btn-blue" id="btnConnectDrive">Drive connect karo</button>
+      </div>
+      <input type="file" id="fileInput" multiple accept="image/*,video/*,*/*" hidden>
+      <input type="file" id="folderInput" webkitdirectory hidden>
+      <button class="link-btn" id="btnAddFolder">ya pura folder chuno</button>
+    </div>
+
+    <div class="chips" id="filterChips">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="photo">Photos</button>
+      <button class="chip" data-filter="video">Videos</button>
+      <button class="chip" data-filter="local">📱 Phone</button>
+      <button class="chip" data-filter="drive">☁️ Drive</button>
+    </div>
+
+    <div id="galleryGrid" class="grid"></div>
+    <div id="galleryEmpty" class="empty">
+      <p class="empty-title">Abhi kuch nahi hai</p>
+      <p>Upar se phone ki files jodo, ya Drive connect karo — sab yahi ek saath dikhega.</p>
+    </div>
+  </section>
+
+  <!-- FILES -->
+  <section id="page-files" class="page">
+    <input type="search" id="searchInput" class="search" placeholder="File dhundo…">
+    <div id="fileList" class="file-list"></div>
+    <div id="filesEmpty" class="empty">
+      <p class="empty-title">Koi file nahi mili</p>
+      <p>Files jodne ke baad yaha list me dikhengi.</p>
+    </div>
+  </section>
+
+  <!-- TRANSFER -->
+  <section id="page-transfer" class="page">
+    <div class="card">
+      <h2>Link seedha Drive me</h2>
+      <p class="hint">Kisi file ka link paste karo, woh phone me save hue bina Drive me chali jayegi. (Kuch websites link ko rok sakti hain — tab file pehle phone me karke neeche wale tareeke se bhejo.)</p>
+      <input type="url" id="linkInput" class="text-input" placeholder="https://… file ka link">
+      <button class="btn btn-blue full" id="btnLinkToDrive">Drive me bhejo</button>
+      <p id="linkStatus" class="status"></p>
+    </div>
+    <div class="card">
+      <h2>Phone se Drive me bhejo</h2>
+      <p class="hint">Gallery me file par dabaa kar rakho (long press) ya Files me file ke saamne wale button se use Drive me upload kar sakte ho.</p>
+    </div>
+    <div class="card">
+      <h2>Transfer</h2>
+      <div id="transferList"><p class="hint">Abhi koi transfer nahi chal raha.</p></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="page-settings" class="page">
+    <div class="card">
+      <h2>Accounts</h2>
+      <div class="account-row"><span>📱 Phone storage</span><span class="ok">Hamesha ready</span></div>
+      <div class="account-row"><span>☁️ Google Drive</span><span id="driveStatus">Not connected</span></div>
+      <button class="btn btn-blue full" id="btnConnectDrive2">Drive connect karo</button>
+      <button class="btn full hidden" id="btnDisconnectDrive">Drive disconnect</button>
+      <div class="account-row dim"><span>OneDrive</span><span>Baad me ayega</span></div>
+      <div class="account-row dim"><span>Terabox</span><span>Baad me ayega</span></div>
+    </div>
+    <div class="card">
+      <h2>Drive setup (ek baar)</h2>
+      <p class="hint">Drive chalane ke liye Google ki ek Client ID lagti hai. README me diye 2-minute steps se bana kar yaha daal do — ye sirf tumhare phone me save hoti hai, kahi jati nahi.</p>
+      <input type="text" id="clientIdInput" class="text-input" placeholder="Google Client ID yaha daalo">
+      <button class="btn full" id="btnSaveClientId">Save karo</button>
+      <p id="clientIdStatus" class="status"></p>
+    </div>
+    <div class="card">
+      <h2>App</h2>
+      <div class="account-row"><span>Animations</span><span id="animInfo">Auto (phone ke hisaab se)</span></div>
+      <div class="account-row"><span>Mode</span><span id="perfInfo">Check ho raha hai…</span></div>
+      <p class="hint">Ye app sirf ek tunnel hai — tumhara data app ke paas rukta hi nahi, seedha tumhare phone aur tumhare Drive ke beech jata hai.</p>
+    </div>
+  </section>
+</main>
+
+<!-- VIEWER -->
+<div id="viewer" class="viewer hidden">
+  <div class="viewer-top">
+    <button class="icon-btn" id="viewerClose">✕</button>
+    <span id="viewerName" class="viewer-name"></span>
+  </div>
+  <div id="viewerBody" class="viewer-body"></div>
+  <div class="viewer-actions">
+    <button class="btn" id="viewerUpload">☁️ Drive me bhejo</button>
+    <button class="btn danger" id="viewerDelete">Delete</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-page="gallery"><span>🖼️</span>Gallery</button>
+  <button class="nav-btn" data-page="files"><span>📁</span>Files</button>
+  <button class="nav-btn" data-page="transfer"><span>🔁</span>Transfer</button>
+  <button class="nav-btn" data-page="settings"><span>⚙️</span>Settings</button>
+</nav>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

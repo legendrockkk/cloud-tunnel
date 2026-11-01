@@ -1,0 +1,107 @@
+/* Cloud Tunnel — simple, saaf look. Halki animation, har phone par smooth. */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f8fa; --card:#ffffff; --text:#17202b; --muted:#6b7686;
+  --blue:#2563eb; --blue-dark:#1d4ed8; --line:#e5e8ee; --danger:#dc2626;
+  --radius:14px;
+}
+html{-webkit-text-size-adjust:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:76px}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font:inherit}
+.hidden{display:none!important}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px}
+.brand h1{font-size:19px;font-weight:700}
+.brand p{font-size:12px;color:var(--muted)}
+
+/* Pages — sirf halka fade, koi bhari animation nahi */
+.page{display:none;padding:14px 14px 8px;max-width:720px;margin:0 auto}
+.page.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin-bottom:8px}
+.hint{font-size:13px;color:var(--muted);line-height:1.5}
+.status{font-size:13px;margin-top:8px;color:var(--blue-dark)}
+.storage-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}
+.storage-row .label{display:block;font-size:12px;color:var(--muted)}
+.storage-row strong{font-size:14px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:14px}
+.bar-fill{height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .3s ease}
+
+/* Buttons */
+.btn{display:inline-block;background:#eef2f7;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;transition:transform .15s ease,background .15s ease}
+.btn:active{transform:scale(.98)}
+.btn-blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.danger{background:#fef2f2;border-color:#fecaca;color:var(--danger)}
+.btn.full{display:block;width:100%;text-align:center;margin-top:10px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap}
+.link-btn{display:block;margin-top:10px;font-size:13px;color:var(--blue);text-decoration:underline}
+
+/* Chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:7px 13px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:600}
+.chip.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* Gallery grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tile{position:relative;border-radius:10px;overflow:hidden;background:#e8ebf0;aspect-ratio:1}
+.tile img,.tile video{width:100%;height:100%;object-fit:cover;display:block}
+.tile .badge{position:absolute;top:5px;left:5px;background:rgba(255,255,255,.92);border-radius:99px;font-size:11px;padding:2px 7px;font-weight:600}
+.tile .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6);pointer-events:none}
+.tile:active{opacity:.85}
+
+/* Empty state */
+.empty{text-align:center;padding:36px 18px;color:var(--muted)}
+.empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.5}
+
+/* Files */
+.search,.text-input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:14px;margin-bottom:12px}
+.text-input{margin-bottom:0}
+.file-list{display:flex;flex-direction:column;gap:6px}
+.file-row{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:left;width:100%}
+.file-row:active{background:#f0f3f8}
+.file-ico{font-size:22px;flex:0 0 auto}
+.file-meta{flex:1;min-width:0}
+.file-name{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-sub{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.file-act{flex:0 0 auto;font-size:18px;padding:6px}
+
+/* Accounts */
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.account-row:last-of-type{border-bottom:none}
+.account-row .ok{color:#15803d;font-weight:600}
+.account-row.dim{color:var(--muted)}
+
+/* Bottom nav */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;padding:8px 0 9px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav-btn span{font-size:19px}
+.nav-btn.active{color:var(--blue);font-weight:700}
+
+/* Viewer */
+.viewer{position:fixed;inset:0;z-index:30;background:#111;display:flex;flex-direction:column;animation:fade .2s ease}
+.viewer-top{display:flex;align-items:center;gap:10px;padding:12px;color:#fff}
+.icon-btn{color:#fff;font-size:18px;padding:6px 10px}
+.viewer-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewer-body{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.viewer-body img,.viewer-body video{max-width:100%;max-height:100%}
+.viewer-body iframe{width:100%;height:100%;border:none;background:#000}
+.viewer-actions{display:flex;gap:10px;padding:14px;background:#111}
+.viewer-actions .btn{flex:1;text-align:center}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#17202b;color:#fff;font-size:13px;padding:10px 16px;border-radius:99px;z-index:40;max-width:88%;text-align:center;animation:fade .2s ease}
+
+/* LITE MODE — kamzor phone (1-2GB RAM) par apne aap lagta hai:
+   koi blur/shadow/animation bojh nahi, sab seedha aur tez */
+body.lite *{animation:none!important;transition:none!important}
+body.lite .card,body.lite .tile,body.lite .file-row{box-shadow:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
