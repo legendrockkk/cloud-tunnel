@@ -1,5 +1,5 @@
 /* Cloud Tunnel service worker — sirf app ke page cache hote hain, user ka data kabhi nahi. */
-var CACHE = 'cloud-tunnel-v1';
+var CACHE = 'cloud-tunnel-v2';
 var FILES = ['./', './index.html', './css/style.css', './js/app.js', './manifest.json', './icons/icon.svg'];
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(FILES); }).then(function(){ return self.skipWaiting(); }));

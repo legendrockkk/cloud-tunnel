@@ -16,10 +16,11 @@
 })();
 
 /* ---------- State ---------- */
-var items = []; // {id, name, size, type:'photo'|'video'|'file', source:'local'|'drive', file?, url?, thumb?, driveId?, mime}
+var items = []; // {id, name, size, type:'photo'|'video'|'file', source:'local'|'drive', file?, url?, thumb?, driveId?, mime, accountEmail?}
 var filter = 'all';
-var driveToken = null;
-var tokenClient = null;
+var accounts = []; // Drive accounts: {email, name, token, exp, usage, limit, state:'ok'|'expired'}
+var activeEmail = ''; // uploads kis account me jayenge
+try { activeEmail = localStorage.getItem('ct_active_account') || ''; } catch(e){}
 var currentViewerItem = null;
 
 function $(id){ return document.getElementById(id); }
@@ -86,8 +87,9 @@ function render(){
 
   list.slice(0, 120).forEach(function(it){ // ek saath zyada tiles nahi — halka rahe
     var d = document.createElement('div'); d.className = 'tile';
-    var badge = it.source==='local' ? '📱 Phone' : '☁️ Drive';
-    var inner = '<span class="badge">' + badge + '</span>';
+    var inner;
+    if (it.source==='local') inner = '<span class="badge">📱 Phone</span>';
+    else inner = '<span class="badge">☁️ <span style="color:' + colorFor(it.accountEmail) + '">●</span> ' + shortName(it.accountEmail) + '</span>';
     if (it.type==='photo' && (it.thumb || it.url)) inner += '<img loading="lazy" src="' + (it.thumb || it.url) + '" alt="">';
     else if (it.type==='video' && it.url && it.source==='local') inner += '<video src="' + it.url + '" preload="metadata" muted></video><span class="play">▶</span>';
     else if (it.type==='video') inner += '<span class="play" style="color:#333;text-shadow:none">🎬</span>';
@@ -101,7 +103,7 @@ function render(){
     var r = document.createElement('button'); r.className = 'file-row';
     var ico = it.type==='photo' ? '🖼️' : (it.type==='video' ? '🎬' : '📄');
     r.innerHTML = '<span class="file-ico">' + ico + '</span><span class="file-meta"><span class="file-name"></span><span class="file-sub">' +
-      (it.source==='local' ? '📱 Phone' : '☁️ Drive') + ' • ' + fmtSize(it.size) + '</span></span>' +
+      (it.source==='local' ? '📱 Phone' : '☁️ ' + it.accountEmail) + ' • ' + fmtSize(it.size) + '</span></span>' +
       (it.source==='local' ? '<span class="file-act" title="Drive me bhejo">☁️⬆️</span>' : '<span class="file-act">›</span>');
     r.querySelector('.file-name').textContent = it.name;
     r.addEventListener('click', function(ev){
@@ -153,15 +155,19 @@ function deleteItem(it){
     toast('List se hata diya (phone ki asal file gallery se delete hogi)');
     render();
   } else {
-    if (!driveToken){ toast('Pehle Drive connect karo'); return; }
-    fetch('https://www.googleapis.com/drive/v3/files/' + it.driveId, {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + driveToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trashed: true })
-    }).then(function(r){
-      if (r.ok){ items = items.filter(function(x){ return x.id !== it.id; }); toast('Drive ke Trash me bhej diya'); render(); }
-      else toast('Delete nahi hua, dobara try karo');
-    }).catch(function(){ toast('Net band lagta hai, baad me try karo'); });
+    var a = acctByEmail(it.accountEmail);
+    if (!a){ toast('Ye account ab juda nahi hai'); return; }
+    ensureToken(a, function(tok){
+      if (!tok){ toast('Us account ka login khatm — Settings se Reconnect karo'); return; }
+      fetch('https://www.googleapis.com/drive/v3/files/' + it.driveId, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true })
+      }).then(function(r){
+        if (r.ok){ items = items.filter(function(x){ return x.id !== it.id; }); toast('Drive ke Trash me bhej diya'); render(); }
+        else toast('Delete nahi hua, dobara try karo');
+      }).catch(function(){ toast('Net band lagta hai, baad me try karo'); });
+    });
   }
 }
 
@@ -184,56 +190,155 @@ function loadGis(cb){
   s.onload = cb; s.onerror = function(){ toast('Google login load nahi hua, net check karo'); };
   document.head.appendChild(s);
 }
+/* ---------- Multi-account helpers ---------- */
+var ACC_COLORS = ['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#db2777','#65a30d'];
+function acctByEmail(email){ for (var i=0;i<accounts.length;i++) if (accounts[i].email===email) return accounts[i]; return null; }
+function shortName(email){ return email ? email.split('@')[0] : 'Drive'; }
+function colorFor(email){ var a = acctByEmail(email); var i = a ? accounts.indexOf(a) : 0; return ACC_COLORS[i % ACC_COLORS.length]; }
+function activeAccount(){ return acctByEmail(activeEmail) || accounts[0] || null; }
+function setActive(email){ activeEmail = email; try{ localStorage.setItem('ct_active_account', email); }catch(e){} updateDriveUI(); }
+function saveAccounts(){ try{ localStorage.setItem('ct_accounts_v1', JSON.stringify(accounts.map(function(a){ return {email:a.email, name:a.name, token:a.token, exp:a.exp}; }))); }catch(e){} }
+
+function updateDriveUI(){
+  var n = accounts.length;
+  var st = $('driveStatus'); if (st) st.textContent = n ? (n + ' account jude hain ✅') : 'Not connected';
+  var du = $('driveUsage');
+  if (du){
+    if (!n) du.textContent = 'Not connected';
+    else {
+      var u=0, l=0; accounts.forEach(function(a){ u += a.usage||0; l += a.limit||0; });
+      du.textContent = fmtSize(u) + ' / ' + fmtSize(l) + ' (' + n + ' account)';
+    }
+  }
+  var dc = $('btnDisconnectDrive'); if (dc) dc.classList.toggle('hidden', !n);
+  var bc = $('btnConnectDrive'); if (bc) bc.textContent = n ? '+ Dusra account jodo' : 'Drive connect karo';
+  var bc2 = $('btnConnectDrive2'); if (bc2) bc2.textContent = n ? '+ Ek aur account jodo' : 'Drive connect karo';
+  var listEl = $('accountsList'); if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!n){ listEl.innerHTML = '<p class="hint">Abhi koi Drive account nahi juda. Neeche wale button se apni Gmail jodo — jitne account chaho, jod sakte ho.</p>'; return; }
+  var act = activeAccount();
+  accounts.forEach(function(a){
+    var row = document.createElement('div'); row.className = 'acct-row';
+    var sub = a.state==='expired' ? 'Login khatm — Reconnect karo' : (fmtSize(a.usage||0) + ' / ' + fmtSize(a.limit||0) + ' bhara hai');
+    row.innerHTML = '<span class="acct-dot" style="background:' + colorFor(a.email) + '"></span>' +
+      '<span class="acct-meta"><span class="acct-email"></span><span class="acct-sub">' + sub + '</span></span>';
+    row.querySelector('.acct-email').textContent = a.email;
+    if (a.state==='expired'){
+      var rb = document.createElement('button'); rb.className='mini-btn'; rb.textContent='Reconnect';
+      rb.addEventListener('click', function(){ reconnectAccount(a.email); });
+      row.appendChild(rb);
+    } else if (act && act.email===a.email){
+      var on = document.createElement('span'); on.className='mini-on'; on.textContent='Upload: yahi ✓'; row.appendChild(on);
+    } else {
+      var sb = document.createElement('button'); sb.className='mini-btn'; sb.textContent='Upload yahi';
+      sb.addEventListener('click', function(){ setActive(a.email); toast('Upload ab ' + a.email + ' me jayega'); });
+      row.appendChild(sb);
+    }
+    var xb = document.createElement('button'); xb.className='mini-btn danger'; xb.textContent='✕';
+    xb.addEventListener('click', function(){ if (confirm(a.email + ' hata dun?')) removeAccount(a.email); });
+    row.appendChild(xb);
+    listEl.appendChild(row);
+  });
+}
+
+function requestToken(opts, cb){
+  loadGis(function(){
+    var done = false;
+    function fin(err, resp){ if (done) return; done = true; cb(err, resp); }
+    try {
+      var tc = google.accounts.oauth2.initTokenClient({
+        client_id: clientId(),
+        scope: 'https://www.googleapis.com/auth/drive',
+        callback: function(resp){ if (resp && resp.access_token) fin(null, resp); else fin(new Error('token nahi mila')); },
+        error_callback: function(){ fin(new Error('gis error')); }
+      });
+      tc.requestAccessToken({ prompt: opts.prompt || '', login_hint: opts.hint || undefined });
+    } catch(e){ fin(e); }
+  });
+}
+function ensureToken(a, cb){
+  if (a.token && a.exp && (a.exp - Date.now() > 60000)) return cb(a.token);
+  requestToken({ hint: a.email, prompt: '' }, function(err, resp){
+    if (err || !resp){ a.state = 'expired'; saveAccounts(); updateDriveUI(); cb(null); return; }
+    a.token = resp.access_token; a.exp = Date.now() + ((resp.expires_in || 3500) * 1000); a.state = 'ok';
+    saveAccounts(); updateDriveUI(); cb(a.token);
+  });
+}
+function finishConnect(token, expiresIn){
+  fetch('https://www.googleapis.com/drive/v3/about?fields=user,storageQuota', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r){ return r.json(); }).then(function(d){
+    var email = d && d.user && d.user.emailAddress;
+    if (!email){ toast('Account pehchana nahi gaya, dobara try karo'); return; }
+    var a = acctByEmail(email);
+    if (!a){ a = { email: email, usage: 0, limit: 0 }; accounts.push(a); }
+    a.name = (d.user && d.user.displayName) || email;
+    a.token = token; a.exp = Date.now() + ((expiresIn || 3500) * 1000); a.state = 'ok';
+    if (d.storageQuota){ a.usage = +d.storageQuota.usage || 0; a.limit = +d.storageQuota.limit || 0; }
+    if (!activeEmail) setActive(email);
+    saveAccounts(); updateDriveUI(); loadDriveFiles(a);
+    toast(email + ' jud gaya ✅');
+  }).catch(function(){ toast('Account jodne me dikkat aayi'); });
+}
 function connectDrive(){
   if (!clientId()){ goPage('settings'); toast('Pehle Settings me Client ID daalo'); return; }
-  loadGis(function(){
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId(),
-      scope: 'https://www.googleapis.com/auth/drive',
-      callback: function(resp){
-        if (resp.error){ toast('Login nahi hua'); return; }
-        driveToken = resp.access_token;
-        $('driveStatus').textContent = 'Connected ✅';
-        $('driveUsage').textContent = 'Connected ✅';
-        $('btnDisconnectDrive').classList.remove('hidden');
-        toast('Drive connect ho gaya');
-        loadDriveFiles(); loadDriveAbout();
-      }
-    });
-    tokenClient.requestAccessToken();
+  requestToken({ prompt: 'select_account' }, function(err, resp){
+    if (err){ toast('Login nahi hua'); return; }
+    finishConnect(resp.access_token, resp.expires_in);
+  });
+}
+function reconnectAccount(email){
+  requestToken({ prompt: 'select_account', hint: email }, function(err, resp){
+    if (err){ toast('Login nahi hua'); return; }
+    finishConnect(resp.access_token, resp.expires_in);
   });
 }
 $('btnConnectDrive').addEventListener('click', connectDrive);
 $('btnConnectDrive2').addEventListener('click', connectDrive);
 $('btnDisconnectDrive').addEventListener('click', function(){
-  driveToken = null;
+  accounts.forEach(function(a){ if (a.token && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke){ try { google.accounts.oauth2.revoke(a.token, function(){}); } catch(e){} } });
+  accounts = []; activeEmail = '';
   items = items.filter(function(x){ return x.source !== 'drive'; });
-  $('driveStatus').textContent = 'Not connected'; $('driveUsage').textContent = 'Not connected';
-  $('btnDisconnectDrive').classList.add('hidden'); render(); toast('Drive disconnect ho gaya');
+  try { localStorage.setItem('ct_active_account', ''); } catch(e){}
+  saveAccounts(); updateDriveUI(); render(); toast('Saare Drive account disconnect ho gaye');
 });
+function removeAccount(email){
+  var a = acctByEmail(email);
+  if (a && a.token && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke){ try { google.accounts.oauth2.revoke(a.token, function(){}); } catch(e){} }
+  accounts = accounts.filter(function(x){ return x.email !== email; });
+  items = items.filter(function(x){ return !(x.source==='drive' && x.accountEmail===email); });
+  if (activeEmail === email) activeEmail = accounts.length ? accounts[0].email : '';
+  try { localStorage.setItem('ct_active_account', activeEmail); } catch(e){}
+  saveAccounts(); updateDriveUI(); render(); toast(email + ' hata diya');
+}
 
-function driveFetch(url){
-  return fetch(url, { headers: { 'Authorization': 'Bearer ' + driveToken } }).then(function(r){ return r.json(); });
+function driveFetchA(tok, url){
+  return fetch(url, { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r){ return r.json(); });
 }
-function loadDriveAbout(){
-  driveFetch('https://www.googleapis.com/drive/v3/about?fields=storageQuota').then(function(d){
-    if (d.storageQuota) $('driveUsage').textContent = fmtSize(+d.storageQuota.usage || 0) + ' / ' + fmtSize(+d.storageQuota.limit || 0);
-  }).catch(function(){});
+function loadDriveAboutA(a){
+  ensureToken(a, function(tok){
+    if (!tok) return;
+    driveFetchA(tok, 'https://www.googleapis.com/drive/v3/about?fields=storageQuota').then(function(d){
+      if (d.storageQuota){ a.usage = +d.storageQuota.usage || 0; a.limit = +d.storageQuota.limit || 0; updateDriveUI(); }
+    }).catch(function(){});
+  });
 }
-function loadDriveFiles(){
-  var q = encodeURIComponent("trashed=false");
-  var fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,thumbnailLink)');
-  driveFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=modifiedTime desc&pageSize=60&fields=' + fields).then(function(d){
-    if (!d.files){ toast('Drive files nahi aayi'); return; }
-    d.files.forEach(function(f){
-      items.unshift({
-        id: 'd' + f.id, driveId: f.id, name: f.name,
-        size: f.size ? +f.size : 0, type: kindOf(f.name, f.mimeType), source: 'drive',
-        thumb: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+$/, '=s360') : null, mime: f.mimeType
+function loadDriveFiles(a){
+  ensureToken(a, function(tok){
+    if (!tok){ toast(a.email + ' ka login khatm — Settings se Reconnect karo'); return; }
+    items = items.filter(function(x){ return !(x.source==='drive' && x.accountEmail===a.email); });
+    var q = encodeURIComponent('trashed=false');
+    var fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,thumbnailLink)');
+    driveFetchA(tok, 'https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=modifiedTime desc&pageSize=60&fields=' + fields).then(function(d){
+      if (!d.files) return;
+      d.files.forEach(function(f){
+        items.unshift({
+          id: 'd' + a.email + ':' + f.id, driveId: f.id, accountEmail: a.email, name: f.name,
+          size: f.size ? +f.size : 0, type: kindOf(f.name, f.mimeType), source: 'drive',
+          thumb: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+$/, '=s360') : null, mime: f.mimeType
+        });
       });
-    });
-    render(); toast('Drive ki files aa gayi');
-  }).catch(function(){ toast('Drive load nahi hua'); });
+      render();
+    }).catch(function(){});
+  });
 }
 
 /* ---------- Upload: phone -> Drive ---------- */
@@ -244,19 +349,26 @@ function addTransfer(name, pct){
   row.textContent = name + ' — ' + pct + '%'; list.prepend(row); return row;
 }
 function uploadToDrive(it){
-  if (!driveToken){ toast('Pehle Drive connect karo'); goPage('settings'); return; }
+  var a = activeAccount();
+  if (!a){ toast('Pehle ek Drive account jodo'); goPage('settings'); return; }
   if (!it.file){ toast('Ye file phone me nahi hai'); return; }
-  var row = addTransfer(it.name, 0);
+  ensureToken(a, function(tok){
+    if (!tok){ toast('Upload wale account ka login khatm — Settings se Reconnect karo'); return; }
+    doUpload(it, a, tok);
+  });
+}
+function doUpload(it, a, tok){
+  var row = addTransfer(it.name + ' → ' + shortName(a.email), 0);
   var meta = { name: it.name, mimeType: it.file.type || 'application/octet-stream' };
   var form = new FormData();
   form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
   form.append('file', it.file);
   var xhr = new XMLHttpRequest();
   xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
-  xhr.setRequestHeader('Authorization', 'Bearer ' + driveToken);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
   xhr.upload.onprogress = function(e){ if (e.lengthComputable && row) row.textContent = it.name + ' — ' + Math.round(e.loaded / e.total * 100) + '%'; };
   xhr.onload = function(){
-    if (xhr.status >= 200 && xhr.status < 300){ if (row) row.textContent = it.name + ' — Drive me chali gayi ✅'; toast('Drive me upload ho gaya'); loadDriveFiles(); }
+    if (xhr.status >= 200 && xhr.status < 300){ if (row) row.textContent = it.name + ' — ' + a.email + ' me chali gayi ✅'; toast('Drive me upload ho gaya'); loadDriveFiles(a); loadDriveAboutA(a); }
     else { if (row) row.textContent = it.name + ' — upload fail'; toast('Upload nahi hua'); }
   };
   xhr.onerror = function(){ if (row) row.textContent = it.name + ' — net error'; };
@@ -268,7 +380,7 @@ function uploadToDrive(it){
 $('btnLinkToDrive').addEventListener('click', function(){
   var url = $('linkInput').value.trim();
   if (!url){ $('linkStatus').textContent = 'Pehle link daalo'; return; }
-  if (!driveToken){ $('linkStatus').textContent = 'Pehle Drive connect karo'; return; }
+  if (!activeAccount()){ $('linkStatus').textContent = 'Pehle ek Drive account jodo'; return; }
   $('linkStatus').textContent = 'Link se file aa rahi hai…';
   fetch(url).then(function(r){ if (!r.ok) throw 0; return r.blob(); }).then(function(blob){
     var name = url.split('/').pop().split('?')[0] || 'download';
@@ -285,4 +397,14 @@ $('btnLinkToDrive').addEventListener('click', function(){
 if ('serviceWorker' in navigator && !window.__LITE){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
 }
+
+/* ---------- Saved Drive accounts wapas lao ---------- */
+(function restoreAccounts(){
+  try { (JSON.parse(localStorage.getItem('ct_accounts_v1') || '[]')).forEach(function(s){
+    accounts.push({ email: s.email, name: s.name || s.email, token: s.token, exp: s.exp, usage: 0, limit: 0, state: 'ok' });
+  }); } catch(e){}
+  if (!activeEmail && accounts.length) activeEmail = accounts[0].email;
+  updateDriveUI();
+  accounts.forEach(function(a){ loadDriveFiles(a); loadDriveAboutA(a); });
+})();
 render();

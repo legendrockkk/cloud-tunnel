@@ -81,7 +81,7 @@
     </div>
     <div class="card">
       <h2>Phone se Drive me bhejo</h2>
-      <p class="hint">Gallery me file par dabaa kar rakho (long press) ya Files me file ke saamne wale button se use Drive me upload kar sakte ho.</p>
+      <p class="hint">Gallery me file par dabaa kar rakho (long press) ya Files me file ke saamne wale button se use Drive me upload kar sakte ho. Upload hamesha us account me jayega jis par Settings me "Upload: yahi ✓" laga hai — waha se badal sakte ho.</p>
     </div>
     <div class="card">
       <h2>Transfer</h2>
@@ -95,10 +95,13 @@
       <h2>Accounts</h2>
       <div class="account-row"><span>📱 Phone storage</span><span class="ok">Hamesha ready</span></div>
       <div class="account-row"><span>☁️ Google Drive</span><span id="driveStatus">Not connected</span></div>
+      <div id="accountsList"></div>
       <button class="btn btn-blue full" id="btnConnectDrive2">Drive connect karo</button>
-      <button class="btn full hidden" id="btnDisconnectDrive">Drive disconnect</button>
+      <button class="btn full hidden" id="btnDisconnectDrive">Sab Drive disconnect karo</button>
+      <p class="hint" style="margin-top:10px">Jitne Gmail chaho jod sakte ho — sabki files ek hi gallery me dikhengi. Jis account par "Upload: yahi ✓" hai, naye upload usi Drive me jayenge. Dhyaan: har naya Gmail pehle Google ki Test users wali list me hona chahiye (Audience page par), warna Google use jodne nahi dega.</p>
+      <div class="account-row dim"><span>Dropbox</span><span>Baad me ayega</span></div>
       <div class="account-row dim"><span>OneDrive</span><span>Baad me ayega</span></div>
-      <div class="account-row dim"><span>Terabox</span><span>Baad me ayega</span></div>
+      <div class="account-row dim"><span>Terabox</span><span>Official tareeka nahi hai</span></div>
     </div>
     <div class="card">
       <h2>Drive setup (ek baar)</h2>
